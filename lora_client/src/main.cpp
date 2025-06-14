@@ -2,7 +2,7 @@
 #include <RH_RF95.h>
 
 #define RX_LED_PIN 7 //why not
-
+#define TX_LED_PIN 6 //dont care its pwm
 
 
 RH_RF95 rf95;
@@ -10,7 +10,9 @@ void setup() {
   Serial.begin(9600);
 
   pinMode(RX_LED_PIN, OUTPUT);
+  pinMode(TX_LED_PIN, OUTPUT);
   digitalWrite(RX_LED_PIN, LOW);
+  digitalWrite(TX_LED_PIN, LOW);
 
   if (!rf95.init()) {
     Serial.println("LoRa radio init failed");
@@ -31,6 +33,7 @@ void loop() {
   uint8_t len = sizeof(buf);
 
   digitalWrite(RX_LED_PIN, LOW); //turn it off
+  digitalWrite(TX_LED_PIN, LOW);
 
   if (rf95.waitAvailableTimeout(3000)) {
     
@@ -42,6 +45,9 @@ void loop() {
 
       rf95.send(data, sizeof(data));
       rf95.waitPacketSent();
+
+      digitalWrite(TX_LED_PIN, HIGH); //turn it on
+      
       Serial.println("REPLY SENT TO SERVER");
     } else {
       Serial.println("RECEIVE FAILED");
