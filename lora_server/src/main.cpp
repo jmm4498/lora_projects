@@ -21,9 +21,13 @@ void setup() {
 
 void loop() {
   
-  Serial.println("SENDING TO CLIENT");
-  const uint8_t data[] = "START SIGNAL";
+  Serial.print("BROADCASTING");
+  Serial.println(START);
   
+  const uint8_t data[MSG_SIZE] = { '\0' }; // Initialize data with null characters
+  
+  strcpy((char*)data, START);
+
    //lets encrypt the data 
   XOR_CIPHER((uint8_t*)data, sizeof(data), (const uint8_t*)KEY, strlen(KEY));
   
@@ -41,19 +45,19 @@ void loop() {
       XOR_CIPHER(buf, len, (const uint8_t*)KEY, strlen(KEY));
       buf[len] = '\0'; // Null-terminate the string for printing
 
-      if(strcmp((char*)buf, "CLIENT RECEIVED SIGNAL") != 0) {
-        Serial.println("UNEXPECTED MESSAGE RECEIVED"); //noise?
+      if(strcmp((char*)buf, RECEIVED) != 0) {
+        Serial.print("BAD RESPONSE: "); //noise?
         Serial.println((char*)buf);
       } else {
-        Serial.print("MESSAGE RECEIVED FROM CLIENT: ");
+        Serial.print("CLIENT RESPONSE: ");
         Serial.println((char*)buf);
       }
 
     } else {
-      Serial.println("RECEIVE FAILED");
+      Serial.println("BROADCAST FAILED");
     }
   } else {
-    Serial.println("NO MESSAGE FROM CLIENT");
+    Serial.println("NO RESPONSE");
   }
   delay(1000);
 }

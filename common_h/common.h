@@ -1,9 +1,12 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#define RESET "?__reset__?"
-#define START "?__start__?"
-#define STOP  "?___stop__?"
+#define MSG_SIZE 15 //includes null terminator
+
+#define RESET    "______reset___"
+#define START    "______start___"
+#define STOP     "_______stop___"
+#define RECEIVED "___received___"
 
 #define NO_MSG  0  
 #define BAD_MSG 1

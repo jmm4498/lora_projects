@@ -30,7 +30,9 @@ void setup() {
 
 void loop() {
   
-  const uint8_t data[] = "CLIENT RECEIVED SIGNAL";  
+  const uint8_t data[MSG_SIZE] = { '\0' }; // Initialize data with null characters
+  strcpy((char*)data, RECEIVED);
+
   uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
   uint8_t len = sizeof(buf);
 
@@ -48,11 +50,11 @@ void loop() {
       XOR_CIPHER(buf, len, (const uint8_t*)KEY, strlen(KEY));
       buf[len] = '\0'; // Null-terminate the string for printing
 
-      if(strcmp((char*)buf, "START SIGNAL") != 0) {
-        Serial.println("UNEXPECTED MESSAGE RECEIVED"); //noise?
+      if(strcmp((char*)buf, START) != 0) {
+        Serial.println("BAD RESPONSE: "); //noise?
         Serial.println((char*)buf);
       }  else {
-        Serial.print("MESSAGE RECEIVED FROM SERVER: ");
+        Serial.print("SERVER REQUEST: ");
         Serial.println((char*)buf);
 
         digitalWrite(RX_LED_PIN, HIGH); //turn it on
@@ -62,13 +64,14 @@ void loop() {
 
         digitalWrite(TX_LED_PIN, HIGH); //turn it on
 
-        Serial.println("REPLY SENT TO SERVER");
+        Serial.print("BROADCASTING: ");
+        Serial.println(RECEIVED);
       }
     } else {
       Serial.println("RECEIVE FAILED");
     }
   } else {
-    Serial.println("NO MESSAGE FROM SERVER");
+    Serial.println("NO SERVER REQUEST");
   }
   delay(1000);
 }
