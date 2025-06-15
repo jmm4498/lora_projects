@@ -12,6 +12,9 @@
 RH_RF95 rf95;
 
 int cmd = 0;
+uint8_t buf[MSG_SIZE];
+uint8_t len = MSG_SIZE;
+
 
 void parse_response(int a) {
 
@@ -83,9 +86,8 @@ void loop() {
     strcpy((char*)data, RECEIVED);
   } 
 
-  uint8_t buf[MSG_SIZE];
-  uint8_t len = MSG_SIZE;
-
+  memset(buf, 0, sizeof(buf)); // Clear the buffer
+  
   digitalWrite(RX_LED_PIN, LOW); //turn it off
   digitalWrite(TX_LED_PIN, LOW);
 

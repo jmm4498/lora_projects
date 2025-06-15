@@ -28,7 +28,8 @@
 enum client_state {
     CLIENT_STATE_STOP = 0,
     CLIENT_STATE_START = 1,
-    CLIENT_STATE_RESET = 2
+    CLIENT_STATE_RESET = 2,
+    CLIENT_STATE_PING = 3
 };
 
 #endif

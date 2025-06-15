@@ -7,9 +7,11 @@ RH_RF95 rf95;
 #define BUTTON_PIN 3
 
 int cmd = 0;
-int button_state = LOW;
-int cmd_state = CLIENT_STATE_RESET;
+volatile int button_pressed = 0;
+volatile int cmd_state = CLIENT_STATE_RESET;
 
+uint8_t buf[MSG_SIZE];
+uint8_t len = MSG_SIZE;
 const uint8_t data[MSG_SIZE] = { '\0' }; // Initialize data with null characters
 
 void parse_response(int a) {
@@ -38,11 +40,34 @@ void parse_response(int a) {
   return;
 }
 
+//interrupt function when button is pressed
+void button_ISR() {
+  
+  button_pressed = 1;
+
+  switch(cmd_state) {
+    case CLIENT_STATE_STOP:
+      cmd_state = CLIENT_STATE_RESET;
+      break;
+    case CLIENT_STATE_RESET:
+      cmd_state = CLIENT_STATE_START;
+      break;
+    case CLIENT_STATE_START:
+      cmd_state = CLIENT_STATE_STOP;
+      break;
+    default:
+      break;
+  }
+
+  return;
+}
+
 
 void setup() {
   Serial.begin(9600);
 
-  pinMode(BUTTON_PIN, INPUT);
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), button_ISR, FALLING);
 
   if (!rf95.init()) {
     Serial.println("LoRa radio init failed");
@@ -58,34 +83,31 @@ void setup() {
 
 void loop() {
   
-  button_state = digitalRead(BUTTON_PIN);
+  memset(buf, 0, sizeof(buf)); // Clear the buffer
 
   Serial.print("Server Status$ ");
 
-  if(button_state == HIGH) {
+  if(button_pressed) {
+    //process user command
     if (cmd_state == CLIENT_STATE_RESET) {
-      cmd_state = CLIENT_STATE_START;
       strcpy((char*)data, START);
     } else if (cmd_state == CLIENT_STATE_START) {
-      cmd_state = CLIENT_STATE_STOP;
       strcpy((char*)data, STOP); 
     } else if (cmd_state == CLIENT_STATE_STOP) {
-      cmd_state = CLIENT_STATE_RESET; 
       strcpy((char*)data, RESET);
     }
-    cmd = cmd_state;
+    button_pressed = 0;
   } else {
-      strcpy((char*)data, PING);
+    //no user command, send ping
+    strcpy((char*)data, PING);
   }
-   //lets encrypt the data 
-  XOR_CIPHER((uint8_t*)data, sizeof(data), (const uint8_t*)KEY, strlen(KEY));
-  
-  rf95.send(data, sizeof(data));
-  
-  rf95.waitPacketSent();
 
-  uint8_t buf[MSG_SIZE];
-  uint8_t len = MSG_SIZE;
+  //lets encrypt the data 
+  XOR_CIPHER((uint8_t*)data, sizeof(data), (const uint8_t*)KEY, strlen(KEY));
+
+  rf95.send(data, sizeof(data));
+
+  rf95.waitPacketSent();
 
   if (rf95.waitAvailableTimeout(3000)) {
     if (rf95.recv(buf, &len)) {
@@ -99,10 +121,12 @@ void loop() {
       parse_response(cmd);
 
     } else {
-      Serial.println("RECEIVE FAILED");
+      Serial.println("DRIVER RECEIVE FAILED");
     }
   } else {
     Serial.println("CONNECTION DROP");
   }
+
+
   delay(TICK);
 }
