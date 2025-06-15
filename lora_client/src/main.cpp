@@ -1,11 +1,13 @@
 #include <SPI.h>
 #include <RH_RF95.h>
+#include "../../common_h/common.h"
 
 #define RX_LED_PIN 7 //why not
 #define TX_LED_PIN 6 //dont care its pwm
 
-
 RH_RF95 rf95;
+
+
 void setup() {
   Serial.begin(9600);
 
@@ -35,20 +37,33 @@ void loop() {
   digitalWrite(RX_LED_PIN, LOW); //turn it off
   digitalWrite(TX_LED_PIN, LOW);
 
+  //lets encrypt the data 
+  XOR_CIPHER((uint8_t*)data, sizeof(data), (const uint8_t*)KEY, strlen(KEY));
+
   if (rf95.waitAvailableTimeout(3000)) {
     
     if (rf95.recv(buf, &len)) {
-      Serial.print("MESSAGE RECEIVED FROM SERVER: ");
-      Serial.println((char*)buf);
 
-      digitalWrite(RX_LED_PIN, HIGH); //turn it on
+      // Decrypt the received data
+      XOR_CIPHER(buf, len, (const uint8_t*)KEY, strlen(KEY));
+      buf[len] = '\0'; // Null-terminate the string for printing
 
-      rf95.send(data, sizeof(data));
-      rf95.waitPacketSent();
+      if(strcmp((char*)buf, "START SIGNAL") != 0) {
+        Serial.println("UNEXPECTED MESSAGE RECEIVED"); //noise?
+        Serial.println((char*)buf);
+      }  else {
+        Serial.print("MESSAGE RECEIVED FROM SERVER: ");
+        Serial.println((char*)buf);
 
-      digitalWrite(TX_LED_PIN, HIGH); //turn it on
-      
-      Serial.println("REPLY SENT TO SERVER");
+        digitalWrite(RX_LED_PIN, HIGH); //turn it on
+
+        rf95.send(data, sizeof(data));
+        rf95.waitPacketSent();
+
+        digitalWrite(TX_LED_PIN, HIGH); //turn it on
+
+        Serial.println("REPLY SENT TO SERVER");
+      }
     } else {
       Serial.println("RECEIVE FAILED");
     }
