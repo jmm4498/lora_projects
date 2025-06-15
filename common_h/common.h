@@ -3,10 +3,15 @@
 
 #define MSG_SIZE 15 //includes null terminator
 
-#define RESET    "______reset___"
-#define START    "______start___"
-#define STOP     "_______stop___"
-#define RECEIVED "___received___"
+#define PING     "______ping___0"
+#define RESET    "______reset__1"
+#define START    "______start__2"
+#define STOP     "_______stop__3"
+#define RECEIVED "___received__4"
+
+#define TICK 300 //ms
+
+#define PARSE_OFFSET MSG_SIZE - 2
 
 #define NO_MSG  0  
 #define BAD_MSG 1

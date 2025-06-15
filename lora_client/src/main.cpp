@@ -7,6 +7,29 @@
 
 RH_RF95 rf95;
 
+int cmd = 0;
+
+void parse_response(int a) {
+
+  switch (a) {
+    case 0:
+      Serial.println("PING FROM SERVER");
+      break;
+    case 1:
+      Serial.println("RESET");
+      break;
+    case 2:
+      Serial.println("START");
+      break;
+    case 3:
+      Serial.println("STOP"); 
+    default:
+      Serial.println("UNKNOWN COMMAND");
+      break;
+  }
+
+  return;
+}
 
 void setup() {
   Serial.begin(9600);
@@ -33,8 +56,16 @@ void loop() {
   const uint8_t data[MSG_SIZE] = { '\0' }; // Initialize data with null characters
   strcpy((char*)data, RECEIVED);
 
-  uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
-  uint8_t len = sizeof(buf);
+  Serial.print("Client Status$ ");
+
+  if(cmd == 0) {
+    strcpy((char*)data, PING);
+  } else if(cmd > 0 && cmd < 5) {
+    strcpy((char*)data, RECEIVED);
+  } 
+
+  uint8_t buf[MSG_SIZE];
+  uint8_t len = MSG_SIZE;
 
   digitalWrite(RX_LED_PIN, LOW); //turn it off
   digitalWrite(TX_LED_PIN, LOW);
@@ -44,34 +75,32 @@ void loop() {
 
   if (rf95.waitAvailableTimeout(3000)) {
     
+    digitalWrite(RX_LED_PIN, HIGH); //turn it on
+
     if (rf95.recv(buf, &len)) {
 
       // Decrypt the received data
       XOR_CIPHER(buf, len, (const uint8_t*)KEY, strlen(KEY));
       buf[len] = '\0'; // Null-terminate the string for printing
 
-      if(strcmp((char*)buf, START) != 0) {
-        Serial.println("BAD RESPONSE: "); //noise?
-        Serial.println((char*)buf);
-      }  else {
-        Serial.print("SERVER REQUEST: ");
-        Serial.println((char*)buf);
+      cmd = atoi((char*)buf + PARSE_OFFSET); // Extract command from the received message
 
-        digitalWrite(RX_LED_PIN, HIGH); //turn it on
+      parse_response(cmd);
 
-        rf95.send(data, sizeof(data));
-        rf95.waitPacketSent();
+      rf95.send(data, sizeof(data));
+  
+      rf95.waitPacketSent();
+      digitalWrite(TX_LED_PIN, HIGH); //turn it on
 
-        digitalWrite(TX_LED_PIN, HIGH); //turn it on
-
-        Serial.print("BROADCASTING: ");
-        Serial.println(RECEIVED);
-      }
     } else {
+
       Serial.println("RECEIVE FAILED");
+
     }
   } else {
+
     Serial.println("NO SERVER REQUEST");
+
   }
-  delay(1000);
+  delay(TICK);
 }

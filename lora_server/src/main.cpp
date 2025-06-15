@@ -4,9 +4,44 @@
 
 RH_RF95 rf95;
 
+#define BUTTON_PIN 3
+
+int cmd = 0;
+int button_state = LOW;
+const uint8_t data[MSG_SIZE] = { '\0' }; // Initialize data with null characters
+
+void parse_response(int a) {
+
+  switch (a) {
+    case 0:
+      Serial.println("PING FROM CLIENT");
+      break;
+    case 1:
+      Serial.println("RESET");
+      break;
+    case 2:
+      Serial.println("START"); //unused on server
+      break;
+    case 3:
+      Serial.println("STOP"); //unused on server
+      break;
+      case 4:
+      Serial.println("CMD RECEIVED");
+      break;
+    default:
+      Serial.println("UNKNOWN COMMAND");
+      break;
+  }
+
+  return;
+}
+
 
 void setup() {
   Serial.begin(9600);
+
+  pinMode(BUTTON_PIN, INPUT);
+
   if (!rf95.init()) {
     Serial.println("LoRa radio init failed");
     while (1);
@@ -21,13 +56,15 @@ void setup() {
 
 void loop() {
   
-  Serial.print("BROADCASTING");
-  Serial.println(START);
-  
-  const uint8_t data[MSG_SIZE] = { '\0' }; // Initialize data with null characters
-  
-  strcpy((char*)data, START);
+  button_state = digitalRead(BUTTON_PIN);
 
+  Serial.print("Server Status$ ");
+
+  if(button_state == HIGH) {
+      strcpy((char*)data, START);
+  } else {
+      strcpy((char*)data, PING);
+  }
    //lets encrypt the data 
   XOR_CIPHER((uint8_t*)data, sizeof(data), (const uint8_t*)KEY, strlen(KEY));
   
@@ -35,8 +72,8 @@ void loop() {
   
   rf95.waitPacketSent();
 
-  uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
-  uint8_t len = sizeof(buf);
+  uint8_t buf[MSG_SIZE];
+  uint8_t len = MSG_SIZE;
 
   if (rf95.waitAvailableTimeout(3000)) {
     if (rf95.recv(buf, &len)) {
@@ -45,19 +82,15 @@ void loop() {
       XOR_CIPHER(buf, len, (const uint8_t*)KEY, strlen(KEY));
       buf[len] = '\0'; // Null-terminate the string for printing
 
-      if(strcmp((char*)buf, RECEIVED) != 0) {
-        Serial.print("BAD RESPONSE: "); //noise?
-        Serial.println((char*)buf);
-      } else {
-        Serial.print("CLIENT RESPONSE: ");
-        Serial.println((char*)buf);
-      }
+      cmd = atoi((char*)buf + PARSE_OFFSET);
+
+      parse_response(cmd);
 
     } else {
-      Serial.println("BROADCAST FAILED");
+      Serial.println("RECEIVE FAILED");
     }
   } else {
-    Serial.println("NO RESPONSE");
+    Serial.println("CONNECTION DROP");
   }
-  delay(1000);
+  delay(TICK);
 }
