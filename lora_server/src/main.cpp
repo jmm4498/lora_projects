@@ -1,9 +1,11 @@
 #include <SPI.h>
 #include <RH_RF95.h>
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
 #include "../../common_h/common.h"
 
 RH_RF95 rf95;
-
+LiquidCrystal_I2C lcd(0x27, 16, 2);
 #define BUTTON_PIN 3
 
 int cmd = 0;
@@ -19,6 +21,8 @@ void parse_response(int a) {
   switch (a) {
     case 0:
       Serial.println("PING FROM CLIENT");
+      lcd.setCursor(0, 1);
+      lcd.print("CONNECTION OKAY");
       break;
     case 1:
       Serial.println("RESET");
@@ -31,6 +35,8 @@ void parse_response(int a) {
       break;
       case 4:
       Serial.println("CMD RECEIVED");
+      lcd.setCursor(0, 0);
+      lcd.print("CMD RECEIVED");
       break;
     default:
       Serial.println("UNKNOWN COMMAND");
@@ -68,6 +74,9 @@ void setup() {
 
   pinMode(BUTTON_PIN, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), button_ISR, FALLING);
+
+  lcd.init();
+  lcd.backlight();
 
   if (!rf95.init()) {
     Serial.println("LoRa radio init failed");
@@ -124,6 +133,8 @@ void loop() {
       Serial.println("DRIVER RECEIVE FAILED");
     }
   } else {
+    lcd.setCursor(0, 1);
+    lcd.print("CONNECTION DROP");
     Serial.println("CONNECTION DROP");
   }
 
