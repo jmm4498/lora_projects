@@ -8,9 +8,10 @@ RH_RF95 rf95;
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 #define BUTTON_PIN 3
 
-int cmd = 0;
+int client_response = 0;
 volatile int button_pressed = 0;
 volatile int cmd_state = CLIENT_STATE_RESET;
+volatile int last_cmd_state = CLIENT_STATE_RESET;
 
 uint8_t buf[MSG_SIZE];
 uint8_t len = MSG_SIZE;
@@ -98,11 +99,11 @@ void loop() {
 
   if(button_pressed) {
     //process user command
-    if (cmd_state == CLIENT_STATE_RESET) {
+    if (cmd_state == CLIENT_STATE_START) {
       strcpy((char*)data, START);
-    } else if (cmd_state == CLIENT_STATE_START) {
-      strcpy((char*)data, STOP); 
     } else if (cmd_state == CLIENT_STATE_STOP) {
+      strcpy((char*)data, STOP); 
+    } else if (cmd_state == CLIENT_STATE_RESET) {
       strcpy((char*)data, RESET);
     }
     button_pressed = 0;
@@ -125,9 +126,9 @@ void loop() {
       XOR_CIPHER(buf, len, (const uint8_t*)KEY, strlen(KEY));
       buf[len] = '\0'; // Null-terminate the string for printing
 
-      cmd = atoi((char*)buf + PARSE_OFFSET);
+      client_response = atoi((char*)buf + PARSE_OFFSET);
 
-      parse_response(cmd);
+      parse_response(client_response);
 
     } else {
       Serial.println("DRIVER RECEIVE FAILED");
