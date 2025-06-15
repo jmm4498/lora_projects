@@ -8,6 +8,8 @@ RH_RF95 rf95;
 
 int cmd = 0;
 int button_state = LOW;
+int cmd_state = CLIENT_STATE_RESET;
+
 const uint8_t data[MSG_SIZE] = { '\0' }; // Initialize data with null characters
 
 void parse_response(int a) {
@@ -61,7 +63,17 @@ void loop() {
   Serial.print("Server Status$ ");
 
   if(button_state == HIGH) {
+    if (cmd_state == CLIENT_STATE_RESET) {
+      cmd_state = CLIENT_STATE_START;
       strcpy((char*)data, START);
+    } else if (cmd_state == CLIENT_STATE_START) {
+      cmd_state = CLIENT_STATE_STOP;
+      strcpy((char*)data, STOP); 
+    } else if (cmd_state == CLIENT_STATE_STOP) {
+      cmd_state = CLIENT_STATE_RESET; 
+      strcpy((char*)data, RESET);
+    }
+    cmd = cmd_state;
   } else {
       strcpy((char*)data, PING);
   }

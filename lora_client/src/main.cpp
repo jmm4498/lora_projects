@@ -3,7 +3,11 @@
 #include "../../common_h/common.h"
 
 #define RX_LED_PIN 7 //why not
-#define TX_LED_PIN 6 //dont care its pwm
+#define TX_LED_PIN 4 //dont care its pwm
+
+#define STATE_STOP_PIN 3
+#define STATE_START_PIN 5
+#define STATE_RESET_PIN 6
 
 RH_RF95 rf95;
 
@@ -17,12 +21,19 @@ void parse_response(int a) {
       break;
     case 1:
       Serial.println("RESET");
+      digitalWrite(STATE_RESET_PIN, HIGH);
+      digitalWrite(STATE_STOP_PIN, LOW);
       break;
     case 2:
       Serial.println("START");
+      digitalWrite(STATE_RESET_PIN, LOW);
+      digitalWrite(STATE_START_PIN, HIGH);
       break;
     case 3:
       Serial.println("STOP"); 
+      digitalWrite(STATE_STOP_PIN, HIGH);
+      digitalWrite(STATE_START_PIN, LOW);
+      break;
     default:
       Serial.println("UNKNOWN COMMAND");
       break;
@@ -36,8 +47,16 @@ void setup() {
 
   pinMode(RX_LED_PIN, OUTPUT);
   pinMode(TX_LED_PIN, OUTPUT);
+  pinMode(STATE_RESET_PIN, OUTPUT);
+  pinMode(STATE_START_PIN, OUTPUT);
+  pinMode(STATE_STOP_PIN, OUTPUT);
+  
   digitalWrite(RX_LED_PIN, LOW);
   digitalWrite(TX_LED_PIN, LOW);
+
+  digitalWrite(STATE_STOP_PIN, LOW);
+  digitalWrite(STATE_START_PIN, LOW);
+  digitalWrite(STATE_RESET_PIN, HIGH);
 
   if (!rf95.init()) {
     Serial.println("LoRa radio init failed");

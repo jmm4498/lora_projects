@@ -16,9 +16,7 @@
 #define NO_MSG  0  
 #define BAD_MSG 1
 #define GOOD_MSG 2
-
 #define KEY "5thAveMile"
-
 
 #define XOR_CIPHER(data, len, key, keyLen)         \
     do {                                           \
@@ -26,5 +24,11 @@
             (data)[i] ^= (key)[i % (keyLen)];      \
         }                                          \
     } while (0)
+
+enum client_state {
+    CLIENT_STATE_STOP = 0,
+    CLIENT_STATE_START = 1,
+    CLIENT_STATE_RESET = 2
+};
 
 #endif
