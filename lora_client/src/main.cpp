@@ -2,8 +2,8 @@
 #include <RH_RF95.h>
 #include "../../common_h/common.h"
 
-#define RX_LED_PIN 7 //why not
-#define TX_LED_PIN 4 //dont care its pwm
+#define RX_LED_PIN 7
+#define TX_LED_PIN 4
 
 #define STATE_STOP_PIN 3
 #define STATE_START_PIN 5
@@ -14,6 +14,8 @@ RH_RF95 rf95;
 int cmd = 0;
 uint8_t buf[MSG_SIZE];
 uint8_t len = MSG_SIZE;
+int current_state = CLIENT_STATE_RESET;
+uint8_t data[MSG_SIZE] = { '\0' };
 
 
 void parse_response(int a) {
@@ -25,17 +27,23 @@ void parse_response(int a) {
     case 1:
       Serial.println("RESET");
       digitalWrite(STATE_RESET_PIN, HIGH);
+      digitalWrite(STATE_START_PIN, LOW);
       digitalWrite(STATE_STOP_PIN, LOW);
+      current_state = CLIENT_STATE_RESET;
       break;
     case 2:
       Serial.println("START");
       digitalWrite(STATE_RESET_PIN, LOW);
       digitalWrite(STATE_START_PIN, HIGH);
+      digitalWrite(STATE_STOP_PIN, LOW);
+      current_state = CLIENT_STATE_START;
       break;
     case 3:
       Serial.println("STOP"); 
-      digitalWrite(STATE_STOP_PIN, HIGH);
+      digitalWrite(STATE_RESET_PIN, LOW);
       digitalWrite(STATE_START_PIN, LOW);
+      digitalWrite(STATE_STOP_PIN, HIGH);
+      current_state = CLIENT_STATE_STOP;
       break;
     default:
       Serial.println("UNKNOWN COMMAND");
@@ -75,24 +83,15 @@ void setup() {
 
 void loop() {
   
-  const uint8_t data[MSG_SIZE] = { '\0' }; // Initialize data with null characters
+  
   strcpy((char*)data, RECEIVED);
 
   Serial.print("Client Status$ ");
-
-  if(cmd == 0) {
-    strcpy((char*)data, PING);
-  } else if(cmd > 0 && cmd < 5) {
-    strcpy((char*)data, RECEIVED);
-  } 
 
   memset(buf, 0, sizeof(buf)); // Clear the buffer
   
   digitalWrite(RX_LED_PIN, LOW); //turn it off
   digitalWrite(TX_LED_PIN, LOW);
-
-  //lets encrypt the data 
-  XOR_CIPHER((uint8_t*)data, sizeof(data), (const uint8_t*)KEY, strlen(KEY));
 
   if (rf95.waitAvailableTimeout(3000)) {
     
@@ -104,9 +103,19 @@ void loop() {
       XOR_CIPHER(buf, len, (const uint8_t*)KEY, strlen(KEY));
       buf[len] = '\0'; // Null-terminate the string for printing
 
-      cmd = atoi((char*)buf + PARSE_OFFSET); // Extract command from the received message
+      cmd = atoi((char*)buf + PARSE_OFFSET_ID); // Extract command from the received message
 
       parse_response(cmd);
+
+      if(cmd == 0) {
+        sprintf((char*)data, "%d%s", current_state, PING);
+      } else if(cmd > 0 && cmd < 5) {
+        sprintf((char*)data, "%d%s", current_state, RECEIVED);
+      }
+
+      Serial.println((char*)data);
+
+      XOR_CIPHER((uint8_t*)data, sizeof(data), (const uint8_t*)KEY, strlen(KEY));
 
       rf95.send(data, sizeof(data));
   

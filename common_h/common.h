@@ -1,17 +1,18 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#define MSG_SIZE 15 //includes null terminator
+#define MSG_SIZE 14 //includes null terminator
 
-#define PING     "______ping___0"
-#define RESET    "______reset__1"
-#define START    "______start__2"
-#define STOP     "_______stop__3"
-#define RECEIVED "___received__4"
+#define PING     "_____ping___0"
+#define RESET    "_____reset__1"
+#define START    "_____start__2"
+#define STOP     "______stop__3"
+#define RECEIVED "__received__4"
 
 #define TICK 300 //ms
 
-#define PARSE_OFFSET MSG_SIZE - 2
+#define PARSE_OFFSET_ID MSG_SIZE - 2
+#define PARSE_OFFSET_STATE 0
 
 #define NO_MSG  0  
 #define BAD_MSG 1

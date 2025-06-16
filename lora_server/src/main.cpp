@@ -8,16 +8,25 @@ RH_RF95 rf95;
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 #define BUTTON_PIN 3
 
+const int max_status_ticks = 10;
+
+int status_ticks = 0;
 int client_response = 0;
 volatile int button_pressed = 0;
-volatile int cmd_state = CLIENT_STATE_RESET;
-volatile int last_cmd_state = CLIENT_STATE_RESET;
+volatile int client_state = CLIENT_STATE_RESET;
+volatile int server_state = CLIENT_STATE_RESET;
 
 uint8_t buf[MSG_SIZE];
 uint8_t len = MSG_SIZE;
 const uint8_t data[MSG_SIZE] = { '\0' }; // Initialize data with null characters
+char stat_buf[18] = { '\0' }; // Buffer for status messages
 
-void parse_response(int a) {
+void parse_response(int a, int b) {
+
+  sprintf(stat_buf, "CMD: %d, STATE: %d", a, b);
+
+  lcd.setCursor(0, 0);
+  lcd.print(stat_buf);
 
   switch (a) {
     case 0:
@@ -36,8 +45,6 @@ void parse_response(int a) {
       break;
       case 4:
       Serial.println("CMD RECEIVED");
-      lcd.setCursor(0, 0);
-      lcd.print("CMD RECEIVED");
       break;
     default:
       Serial.println("UNKNOWN COMMAND");
@@ -52,15 +59,15 @@ void button_ISR() {
   
   button_pressed = 1;
 
-  switch(cmd_state) {
+  switch(client_state) {
     case CLIENT_STATE_STOP:
-      cmd_state = CLIENT_STATE_RESET;
+      server_state = CLIENT_STATE_RESET;
       break;
     case CLIENT_STATE_RESET:
-      cmd_state = CLIENT_STATE_START;
+      server_state = CLIENT_STATE_START;
       break;
     case CLIENT_STATE_START:
-      cmd_state = CLIENT_STATE_STOP;
+      server_state = CLIENT_STATE_STOP;
       break;
     default:
       break;
@@ -99,12 +106,12 @@ void loop() {
 
   if(button_pressed) {
     //process user command
-    if (cmd_state == CLIENT_STATE_START) {
+    if (client_state == CLIENT_STATE_START) {
+      strcpy((char*)data, STOP);
+    } else if (client_state == CLIENT_STATE_STOP) {
+      strcpy((char*)data, RESET); 
+    } else if (client_state == CLIENT_STATE_RESET) {
       strcpy((char*)data, START);
-    } else if (cmd_state == CLIENT_STATE_STOP) {
-      strcpy((char*)data, STOP); 
-    } else if (cmd_state == CLIENT_STATE_RESET) {
-      strcpy((char*)data, RESET);
     }
     button_pressed = 0;
   } else {
@@ -126,9 +133,13 @@ void loop() {
       XOR_CIPHER(buf, len, (const uint8_t*)KEY, strlen(KEY));
       buf[len] = '\0'; // Null-terminate the string for printing
 
-      client_response = atoi((char*)buf + PARSE_OFFSET);
+      //client_response = buf[PARSE_OFFSET_ID]; //last digit is command ID
+      client_response = atoi((char*)buf + PARSE_OFFSET_ID); //last digit is command ID
+      client_state = atoi((char*)buf + PARSE_OFFSET_STATE); //first digit is client LED state (START, STOP, RESET)
 
-      parse_response(client_response);
+      //Serial.print((char*)buf);
+
+      parse_response(client_response, client_state);
 
     } else {
       Serial.println("DRIVER RECEIVE FAILED");
@@ -136,7 +147,7 @@ void loop() {
   } else {
     lcd.setCursor(0, 1);
     lcd.print("CONNECTION DROP");
-    Serial.println("CONNECTION DROP");
+    //Serial.println("CONNECTION DROP");
   }
 
 
