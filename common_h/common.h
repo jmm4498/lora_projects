@@ -11,7 +11,7 @@
 
 #define TICK 300 //ms
 
-#define PARSE_OFFSET_ID MSG_SIZE - 2
+#define PARSE_OFFSET_ID MSG_SIZE - 1
 #define PARSE_OFFSET_STATE 0
 
 #define NO_MSG  0  

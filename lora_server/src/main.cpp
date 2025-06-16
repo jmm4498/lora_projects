@@ -18,19 +18,17 @@ volatile int server_state = CLIENT_STATE_RESET;
 
 uint8_t buf[MSG_SIZE];
 uint8_t len = MSG_SIZE;
-const uint8_t data[MSG_SIZE] = { '\0' }; // Initialize data with null characters
+const uint8_t cmd_buffer[MSG_SIZE] = { '\0' }; // Initialize data with null characters
 char stat_buf[18] = { '\0' }; // Buffer for status messages
 
-void parse_response(int a, int b) {
+const int status_cyles = 15;
+int status_cycle_count = 0;
+volatile int last_status = 0;
 
-  sprintf(stat_buf, "CMD: %d, STATE: %d", a, b);
+void parse_response(int response, int state) {
 
-  lcd.setCursor(0, 0);
-  lcd.print(stat_buf);
-
-  switch (a) {
+  switch (response) {
     case 0:
-      Serial.println("PING FROM CLIENT");
       lcd.setCursor(0, 1);
       lcd.print("CONNECTION OKAY");
       break;
@@ -43,13 +41,28 @@ void parse_response(int a, int b) {
     case 3:
       Serial.println("STOP"); //unused on server
       break;
-      case 4:
+    case 4:
+      status_cycle_count = 0; //reset the counter if a new status is received
       Serial.println("CMD RECEIVED");
       break;
     default:
       Serial.println("UNKNOWN COMMAND");
       break;
   }
+
+  if(status_cycle_count == 0) { //'first' time we saw this status, lets print it for a few cycles before resetting
+    last_status = response;
+  }
+
+  if(status_cycle_count++ >= status_cyles) {
+    status_cycle_count = 0;
+  }
+
+  sprintf(stat_buf, "STATUS:%d,STATE:%d", last_status, state);
+
+  lcd.setCursor(0, 0);
+  lcd.print(stat_buf);
+
 
   return;
 }
@@ -107,22 +120,22 @@ void loop() {
   if(button_pressed) {
     //process user command
     if (client_state == CLIENT_STATE_START) {
-      strcpy((char*)data, STOP);
+      strcpy((char*)cmd_buffer, STOP);
     } else if (client_state == CLIENT_STATE_STOP) {
-      strcpy((char*)data, RESET); 
+      strcpy((char*)cmd_buffer, RESET); 
     } else if (client_state == CLIENT_STATE_RESET) {
-      strcpy((char*)data, START);
+      strcpy((char*)cmd_buffer, START);
     }
     button_pressed = 0;
   } else {
     //no user command, send ping
-    strcpy((char*)data, PING);
+    strcpy((char*)cmd_buffer, PING);
   }
 
   //lets encrypt the data 
-  XOR_CIPHER((uint8_t*)data, sizeof(data), (const uint8_t*)KEY, strlen(KEY));
+  XOR_CIPHER((uint8_t*)cmd_buffer, sizeof(cmd_buffer), (const uint8_t*)KEY, strlen(KEY));
 
-  rf95.send(data, sizeof(data));
+  rf95.send(cmd_buffer, sizeof(cmd_buffer));
 
   rf95.waitPacketSent();
 
@@ -136,8 +149,6 @@ void loop() {
       //client_response = buf[PARSE_OFFSET_ID]; //last digit is command ID
       client_response = atoi((char*)buf + PARSE_OFFSET_ID); //last digit is command ID
       client_state = atoi((char*)buf + PARSE_OFFSET_STATE); //first digit is client LED state (START, STOP, RESET)
-
-      //Serial.print((char*)buf);
 
       parse_response(client_response, client_state);
 
